@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="OrthoStyle: Manifold-Preserving Training-Free Style Transfer via Score-Orthogonal Guidance." />
+  <title>OrthoStyle — Manifold-Preserving Training-Free Style Transfer</title>
+  <link rel="stylesheet" href="style.css?v=4" />
+</head>
+<body>
+  <main>
+    <nav class="project-nav" aria-label="Project sections">
+      <div class="project-nav-inner">
+        <a href="#demo">Interactive Demo</a>
+        <a href="#abstract">Abstract</a>
+        <a href="#method">Methodology</a>
+        <a href="#results">Qualitative Results</a>
+        <a href="#analysis">Quantitative Results</a>
+        <a href="#ablation">Ablation Studies</a>
+        <a href="#bibtex">BibTeX</a>
+      </div>
+    </nav>
+
+    <header class="hero section">
+      <!-- <div class="venue-pill">Under Review</div> -->
+      <h1><span class="method-name">OrthoStyle</span>: Manifold-Preserving Training-Free Style Transfer via Score-Orthogonal Guidance</h1>
+      <!-- <p class="subtitle">A training-free framework balancing style fidelity and content preservation without fine-tuning or DDIM inversion.</p> -->
+      <div class="authors">
+        <a href="#">Anonymous Authors</a>
+      </div>
+      <div class="link-row">
+        <a class="paper-link" href="#">📄 Paper</a>
+        <a class="paper-link" href="#">⌁ arXiv</a>
+        <a class="paper-link" href="#">⌘ Code</a>
+        <a class="paper-link" href="#bibtex">❞ BibTeX</a>
+      </div>
+    </header>
+
+    <section class="section demo-section" id="demo">
+      <div class="section-heading">
+        <h2>Interactive Demo</h2>
+        <p>Select one content image and one style reference to generate a stylization image.
+      </div>
+
+      <div class="demo-shell">
+        <div class="demo-controls">
+          <div class="selector-block">
+            <div class="selector-title-row">
+              <div>
+                <span class="step-badge">1</span>
+                <h3>Content Image</h3>
+              </div>
+              <span class="selection-mode">Single select</span>
+            </div>
+            <div class="thumb-grid" id="content-grid" aria-label="Content image choices"></div>
+          </div>
+
+          <div class="selector-block">
+            <div class="selector-title-row">
+              <div>
+                <span class="step-badge">2</span>
+                <h3>Style Image</h3>
+              </div>
+              <span class="selection-mode">Single select</span>
+            </div>
+            <div class="thumb-grid style-grid" id="style-grid" aria-label="Style image choices"></div>
+          </div>
+
+          <div class="demo-actions">
+            <button id="clear-btn" class="btn btn-secondary" type="button">Clear All</button>
+            <button id="generate-btn" class="btn btn-primary" type="button" disabled>✨ Generate</button>
+          </div>
+        </div>
+
+        <div class="result-panel" id="result-panel">
+          <div class="result-placeholder" id="result-placeholder">
+            <div class="placeholder-icon">✦</div>
+            <p id="status-title">Choose a content and a style</p>
+            <span id="status-detail">The matching output will appear here.</span>
+          </div>
+
+          <div class="result-view hidden" id="result-view">
+            <div class="result-canvas">
+              <img id="result-image" alt="Precomputed stylized result" />
+            </div>
+          </div>
+
+          <div class="loading-overlay hidden" id="loading-overlay" aria-live="polite">
+            <div class="loading-card">
+              <div class="spinner"></div>
+              <div class="loading-copy">
+                <strong id="loading-title">Generating result…</strong>
+                <span id="loading-subtitle">Preparing the stylized image.</span>
+              </div>
+              <div class="progress-track" aria-hidden="true">
+                <div class="progress-bar" id="progress-bar"></div>
+              </div>
+              <div class="progress-meta">
+                <span id="progress-label">0%</span>
+                <span>Demo progress</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- <p class="demo-note">Tip: use a deterministic naming convention such as <code>ortho_content__style.webp</code>. This makes adding new results require no backend and almost no JavaScript editing.</p> -->
+    </section>
+
+    <section class="section prose-section" id="abstract">
+      <h2>Abstract</h2>
+      <p>
+        Reference-based style transfer with diffusion models aims to synthesize artistic textures while preserving the geometry and semantics of a target image. However, training-free methods face a trade-off between style fidelity and content preservation: strong style injection can distort structure and cause content leakage, while conservative transfer often leads to under-stylization. To solve this trade-off, we introduce <b>OrthoStyle</b>, a training-free framework that addresses this trade-off without network fine-tuning or DDIM inversion. OrthoStyle consists of three components: <em>Semantic Gating</em> to preserve structural and semantic cues; <em>Score-Orthogonal Guidance</em> to project style gradients orthogonally to the diffusion score direction, preserving the sampling trajectory near the data manifold; and an <em>Early Step Controller</em> that applies AdaIN-based clean-latent pushforward to establish color and layout before fine-grained stylization. Extensive quantitative and qualitative comparisons with both OC-based baselines and stylization methods show that OrthoStyle achieves a favorable balance between style fidelity and content preservation while maintaining structural consistency. Most notably, it completely outperforms the baseline that uses the same backbone.
+      </p>
+    </section>
+
+    <section class="section" id="method">
+      <h2>Methodology</h2>
+      <figure class="wide-figure">
+        <img src="assets/figures/pipeline.webp" alt="OrthoStyle Overall Pipeline Architecture" />
+        <figcaption><strong>Overall Framework of OrthoStyle.</strong> Training-free style transfer framework combining Semantic Gating, Score-Orthogonal DINO Guidance, and an Early Step Controller for manifold-preserving stylization without DDIM inversion.</figcaption>
+      </figure>
+      <!-- <figure class="wide-figure" style="margin-top: 32px;">
+        <img src="assets/figures/cross-attn.webp" alt="Cross-Attention Guidance Architecture" />
+        <figcaption><strong>Cross-Attention Module Architecture.</strong> Detailed schematic of the cross-attention control mechanism ensuring semantic structure retention while authentically rendering style textures.</figcaption>
+      </figure> -->
+
+      <div class="component-grid">
+
+      <div class="component-card">
+        <div class="component-index">1</div>
+
+        <h3>Semantic Gating</h3>
+
+        <p>
+          Extracts semantically relevant structural cues from the content image
+          while suppressing irrelevant details, providing a cleaner condition
+          for structure-preserving stylization.
+        </p>
+      </div>
+
+
+      <div class="component-card">
+        <div class="component-index">2</div>
+
+        <h3>Score-Orthogonal DINO Guidance</h3>
+
+        <p>
+          Improves style fidelity using DINO-based guidance projected
+          orthogonally to the diffusion score, reducing interference with
+          the model's native denoising direction.
+        </p>
+      </div>
+
+
+      <div class="component-card">
+        <div class="component-index">3</div>
+
+        <h3>Early-Step Controller with Blended Style Tokens</h3>
+
+        <p>
+          Injects blended style tokens during early denoising steps to establish
+          global appearance while preserving fine-grained style information
+          throughout generation.
+        </p>
+      </div>
+
+    </div>
+    </section>
+
+    <section class="section" id="results">
+      <h2>Qualitative Visualization</h2>
+      <p class="section-copy">Visual comparisons demonstrating OrthoStyle's superiority in style fidelity, stroke dynamics, and content geometry retention against representative baselines.</p>
+      <figure class="wide-figure">
+        <img src="assets/figures/qualitative_comparison_baselines.webp" alt="Qualitative Results Comparison" />
+        <figcaption><strong>Qualitative Comparison with both stylization and OC-based methods.</strong> All results synthesized under null-prompt inference across diverse artistic styles and content categories.</figcaption>
+      </figure>
+      <figure class="wide-figure">
+        <img src="assets/figures/qualitative_matrix_teaser.webp" alt="OrthoStyle Teaser Overview" />
+        <figcaption><strong>Qualitative Stylization of OrthoStyle across Diverse Content Categories and Artistic Styles.</figcaption>
+      </figure>
+    </section>
+
+
+    <section class="section" id="analysis">
+  <h2>Quantitative & Trade-off Analysis</h2>
+
+  <div class="analysis-grid">
+
+    <div class="analysis-card">
+      <h3>Style-Content Pareto Frontier</h3>
+
+     <p>
+      <strong>OrthoStyle</strong> lies on a favorable style-content Pareto frontier, balancing content preservation (CLIP-I) and style fidelity (DINO) while avoiding both content collapse and under-stylization.
+    </p>
+
+      <div class="analysis-image-wrap">
+        <img
+          src="assets/figures/pareto_plot.webp"
+          alt="Style-Content Pareto Frontier"
+        />
+      </div>
+    </div>
+
+
+    <div class="analysis-card">
+      <h3>OrthoStyle vs. RB-Modulation</h3>
+
+      <p>
+        <strong>OrthoStyle</strong> achieves substantial gains over <strong>RB-Modulation</strong> in style fidelity, alignment, structural preservation, and leakage suppression, with only a marginal change in content preservation under the same Stable Cascade backbone.
+      </p>
+
+      <div class="analysis-image-wrap">
+        <img
+          src="assets/figures/head_to_head_vs_rbm.webp"
+          alt="Head-to-Head Comparison vs RB-Modulation"
+        />
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<section class="section" id="ablation">
+  <h2>Ablation Studies</h2>
+
+  <div class="analysis-grid">
+
+    <div class="analysis-card">
+      <h3>Ablation on Core Components</h3>
+
+      <p>
+        Visual and quantitative ablation verifying the essential
+        contributions of Semantic Gating, Score-Orthogonal DINO Guidance,
+        and the Early Step Controller.
+      </p>
+
+      <div class="analysis-image-wrap">
+        <img
+          src="assets/figures/ablation_components.webp"
+          alt="Ablation of Core Components"
+        />
+      </div>
+    </div>
+
+
+    <div class="analysis-card">
+      <h3>Ablation across Prompt Levels</h3>
+
+      <p>
+        Evaluation of stylization stability and fidelity across varying
+        prompt conditioning levels, highlighting robust performance under
+        diverse textual guidance.
+      </p>
+
+      <div class="analysis-image-wrap">
+        <img
+          src="assets/figures/ablation_prompt_levels.webp"
+          alt="Ablation across Prompt Levels"
+        />
+      </div>
+    </div>
+
+  </div>
+</section>
+
+    <section class="section" id="bibtex">
+      <h2>BibTeX</h2>
+      <pre><code>@article{orthostyle,
+  title  = {OrthoStyle: Manifold-Preserving Training-Free Style Transfer via Score-Orthogonal Guidance},
+  author = {Anonymous},
+  year   = {2026}
+}</code></pre>
+    </section>
+
+    <footer>
+      <p>
+        This project page presents supplementary visual results and an interactive demo for our style transfer method.
+      </p>
+    </footer>
+  </main>
+
+  <script src="data.js?v=3"></script>
+  <script src="script.js?v=3"></script>
+
+  <script>
+    (() => {
+      const navLinks = [...document.querySelectorAll('.project-nav a[href^="#"]')];
+      const sections = navLinks
+        .map(link => document.querySelector(link.getAttribute('href')))
+        .filter(Boolean);
+
+      if (!navLinks.length || !sections.length) return;
+
+      const setActive = (id) => {
+        navLinks.forEach(link => {
+          link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+        });
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter(entry => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+
+        if (visible.length) setActive(visible[0].target.id);
+      }, {
+        rootMargin: '-20% 0px -65% 0px',
+        threshold: 0
+      });
+
+      sections.forEach(section => observer.observe(section));
+
+      navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          const id = link.getAttribute('href').slice(1);
+          setActive(id);
+        });
+      });
+
+      setActive(sections[0].id);
+    })();
+  </script>
+
+</body>
+</html>
